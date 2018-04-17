@@ -35,3 +35,8 @@ def read_ts_data():
         data = response.read()
         pprint(json.loads(data.decode()), width=1)
         return data
+
+a = read_ts_data()
+data = json.loads(a.decode())
+for feed in data["feeds"]:
+    print(feed["field2"], type(feed["field2"]))
