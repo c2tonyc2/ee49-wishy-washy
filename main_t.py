@@ -9,13 +9,14 @@ from network import WLAN, STA_IF
 
 MPU9250._chip_id = 115
 BATCH_SIZE = 100
-CALIBRATION_SIZE = 1000
+CALIBRATION_SIZE = 100
 DATA_FREQUENCY = 60000 # Data collection frequency in ms
 SEND_TIME = 5 # time in s to wait for a MQTT message to go out
 BROKER = "mqtt.thingspeak.com"
 TS_CHANNEL_ID = "472546"
 TS_WRITE_KEY = "TQ6PXDYGOSXZV2XA"
 OFFSETS = {}
+SCALARS = set(["noise", "temp"])
 
 class Vector3(object):
     def __init__(self, x=0, y=0, z=0):
@@ -65,6 +66,17 @@ print("MQQTClient Connected!")
 i2c = I2C(id=0, scl=Pin(SCL), sda=Pin(SDA), freq=100000)
 imu = MPU9250(i2c)
 
+def dist(curr, key):
+    if key in SCALARS:
+        return abs(curr - OFFSETS[key])
+    else:
+        return Vector3(
+            x=abs(curr.x - OFFSETS[key].x),
+            y=abs(curr.y - OFFSETS[key].y),
+            z=abs(curr.z - OFFSETS[key].z)
+        )
+
+
 def imu_collect():
     return {
         "accel": Vector3.from_imu_vector(imu.accel.xyz),
@@ -101,7 +113,7 @@ def calibrate():
     sleep(10)
 
 def collect_data(timer):
-	nose_avg = 0
+    nose_avg = 0
     imu_values_avg = {
         "accel": Vector3(),
         "gyro": Vector3(),
@@ -109,29 +121,29 @@ def collect_data(timer):
         "temp": 0
     }
     print("collecting data ... ")
-	for i in range(BATCH_SIZE):
-		value = abs(mic_adc.read() - OFFSETS["noise"])
-		nose_avg += value
+    for i in range(BATCH_SIZE):
+        value = abs(mic_adc.read() - OFFSETS["noise"])
+        nose_avg += dist(mic_adc.read(), "noise")
 
         imu_values = imu_collect()
-        imu_values.update(
-            (k, v + OFFSETS[k].dist(imu_values[k]))
+        imu_values_avg.update(
+            (k, v + dist(imu_values[k], k))
             for k, v in imu_values_avg.items()
         )
 
-	nose_avg = nose_avg/BATCH_SIZE
+    nose_avg = nose_avg/BATCH_SIZE
     imu_values_avg.update((k, v / BATCH_SIZE) for k, v in imu_values_avg.items())
 
     topic = "channels/" + TS_CHANNEL_ID + "/publish/" + TS_WRITE_KEY
     message = "field1={}&field2={}&field3={}&field4={}&field5={}".format(
         nose_avg,
-        str(OFFSETS["accel"] - imu_values["accel"]),
-        str(OFFSETS["gyro"] - imu_values["gyro"]),
-        str(OFFSETS["mag"] - imu_values["mag"]),
-        str(OFFSETS["temp"] - imu_values["temp"])
+        imu_values_avg["accel"],
+        imu_values["gyro"],
+        imu_values["mag"],
+        imu_values_avg["temp"]
     )
     mqtt.publish(topic, message)
-    time.sleep(SEND_TIME)
+    sleep(SEND_TIME)
 
 calibrate()
 data_timer = Timer(0)
