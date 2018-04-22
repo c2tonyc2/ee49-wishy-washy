@@ -122,7 +122,6 @@ def collect_data(timer):
     }
     print("collecting data ... ")
     for i in range(BATCH_SIZE):
-        value = abs(mic_adc.read() - OFFSETS["noise"])
         nose_avg += dist(mic_adc.read(), "noise")
 
         imu_values = imu_collect()
