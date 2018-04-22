@@ -34,7 +34,6 @@ def format_row(row):
     """
     formatted_row = []
     for field, value in row.items():
-        print(field not in FIELD_NAME_MAP)
         if field not in FIELD_NAME_MAP or FIELD_NAME_MAP[field] not in VECTORS:
             formatted_row.append(value)
         else:
