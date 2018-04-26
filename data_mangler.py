@@ -40,7 +40,7 @@ def format_row(row):
             formatted_row += [v for v in value.split(",")]
     return formatted_row
 
-def mqtt_to_sheets(file="feeds.csv", sheets_name="ee49-feeds-2"):
+def mqtt_to_sheets(file="data/feeds.csv", sheets_name="ee49-feeds"):
     sheets_rows = []
     with open(file, 'r') as csvfile:
         laundry_data = csv.DictReader(csvfile)
